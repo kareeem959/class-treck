@@ -20,11 +20,11 @@ dependencies:
   flutter_bloc: ^8.1.6
 
   # Location & Geofencing
-  geolocator: ^13.0.1
+  geolocator: ^14.1.1
   permission_handler: ^11.3.1
 
   # Google Form In-App WebView
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.14.1
 
   # UI & Utilities
   google_fonts: ^6.2.1

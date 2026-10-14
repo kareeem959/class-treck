@@ -1,4 +1,4 @@
-enum AttendanceMode { punchIn, quiz }
+enum AttendanceMode { punchIn, quiz, location }
 
 class AttendanceSessionModel {
   final String id;

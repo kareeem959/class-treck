@@ -50,8 +50,10 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     }
   }
   Future<void> submitQuiz(String sessionId, String studentId) async {
+    emit(AttendanceLoading()); // عشان نظهر مؤشر التحميل
     try {
       await _repository.markQuizSubmitted(sessionId, studentId);
+      emit(QuizSubmittedSuccess()); // هنا بنعلن النجاح عشان الشاشة تنقل
     } catch (e) {
       emit(AttendanceError(e.toString()));
     }

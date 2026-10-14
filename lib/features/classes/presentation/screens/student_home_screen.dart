@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../../auth/logic/auth_state.dart';
 import '../../../auth/presentation/screens/role_selection_screen.dart';
 import '../../logic/classes_cubit.dart';
 import '../../data/models/class_model.dart';
+import '../../../attendance/data/models/attendance_session_model.dart';
+import '../../../attendance/presentation/screens/student_active_session_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -16,6 +19,7 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String studentId = '';
+  String studentName = '';
 
   @override
   void initState() {
@@ -27,7 +31,63 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       studentId = authState.user.uid;
+      studentName = authState.user.name;
       context.read<ClassesCubit>().getStudentClasses(studentId);
+    }
+  }
+
+  // دالة للتحقق من وجود سشن شغال قبل فتح الشاشة
+  Future<void> _checkForActiveSession(BuildContext context, ClassModel classModel) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('attendance_sessions')
+          .where('classId', isEqualTo: classModel.id)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // إغلاق مؤشر التحميل
+
+      if (query.docs.isNotEmpty) {
+        // لو لقينا سشن، نتأكد إن وقته لسه مخلصش
+        final sessionData = query.docs.first.data();
+        final session = AttendanceSessionModel.fromMap(sessionData, query.docs.first.id);
+
+        if (DateTime.now().isBefore(session.expiryTime)) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentActiveSessionScreen(
+                classData: classModel,
+                session: session,
+                studentId: studentId,
+                studentName: studentName,
+                studentCode: studentId, // مؤقتاً بنبعت الـ ID ككود لحد ما نضيف خانة الكود في التسجيل
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('The active session has expired.'), backgroundColor: Colors.orange),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active session for this class right now.'), backgroundColor: Colors.orange),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -66,7 +126,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Successfully joined the class!'), backgroundColor: AppColors.secondary),
               );
-              _loadStudentClasses(); // تحديث القائمة بعد الانضمام الناجح
+              _loadStudentClasses();
             } else if (state is ClassesError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
@@ -91,6 +151,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: ListTile(
+                      // التعديل هنا: استدعاء دالة التحقق عند الضغط
+                      onTap: () => _checkForActiveSession(context, classModel),
                       contentPadding: const EdgeInsets.all(16),
                       title: Text(
                         classModel.name,
@@ -177,7 +239,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ElevatedButton(
             onPressed: () {
               if (codeController.text.isNotEmpty) {
-                // إرسال كود الانضمام مع ID الطالب للـ Cubit
                 context.read<ClassesCubit>().joinClass(
                   codeController.text.trim(),
                   studentId,

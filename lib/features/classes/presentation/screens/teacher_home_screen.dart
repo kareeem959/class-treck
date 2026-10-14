@@ -5,7 +5,7 @@ import '../../../auth/logic/auth_cubit.dart';
 import '../../../auth/logic/auth_state.dart';
 import '../../../auth/presentation/screens/role_selection_screen.dart';
 import '../../logic/classes_cubit.dart';
-import '../../data/models/class_model.dart';
+ import '../../../attendance/presentation/screens/start_attendance_screen.dart'; // الاستدعاء الجديد
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -88,6 +88,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: ListTile(
+                      // الإضافة هنا: الانتقال لشاشة الحضور عند الضغط على الكارت
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StartAttendanceScreen(classData: classModel),
+                          ),
+                        );
+                      },
                       contentPadding: const EdgeInsets.all(16),
                       title: Text(
                         classModel.name,
@@ -198,7 +207,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
-                // استدعاء Cubit لإنشاء المادة
                 context.read<ClassesCubit>().createNewClass(
                   name: nameController.text,
                   description: descController.text,

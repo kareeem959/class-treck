@@ -20,3 +20,4 @@ class AttendanceError extends AttendanceState {
   final String message;
   AttendanceError(this.message);
 }
+class QuizSubmittedSuccess extends AttendanceState {}
